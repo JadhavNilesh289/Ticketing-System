@@ -1,0 +1,48 @@
+# GLOBAL IGNORE
+*.log
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
+
+# BACKEND: Spring Boot (Ticketing-System)
+Ticketing-System/target/
+Ticketing-System/out/
+Ticketing-System/build/
+Ticketing-System/.idea/
+Ticketing-System/*.iml
+Ticketing-System/.classpath
+Ticketing-System/.project
+Ticketing-System/.settings/
+
+# Exclude sensitive files
+Ticketing-System/src/main/resources/application.properties
+Ticketing-System/src/main/resources/application.yml
+
+# Maven wrapper JAR
+Ticketing-System/.mvn/wrapper/maven-wrapper.jar
+
+
+# FRONTEND: React + Vite (Frontend)
+Frontend/node_modules/
+Frontend/dist/
+Frontend/build/
+Frontend/.vite/
+Frontend/.cache/
+Frontend/*.tsbuildinfo
+
+# Environment files
+Frontend/.env
+Frontend/.env.*
+*.env
+
+# EDITORS & IDEs
+.vscode/
+.idea/
+*.iml
+
+
+# OS & OTHER
+logs/
+log/
+*.log
