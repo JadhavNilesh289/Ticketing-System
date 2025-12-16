@@ -1,7 +1,7 @@
 package com.ticketingsystem.dto;
 
-public class MessageCreateDto {
+public class MessageCreateRequest {
     public String body;
-    public boolean isInternal = false;
+    public boolean internal;
     public Long authorId; //for dev-mode
 }

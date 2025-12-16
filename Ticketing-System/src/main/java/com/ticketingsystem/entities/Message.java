@@ -1,19 +1,22 @@
 package com.ticketingsystem.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "messages")
-@Data
+@Getter @Setter
 public class Message {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne
     @JoinColumn(name = "ticket_id")
+    @JsonIgnore
     private Ticket ticket;
 
     @ManyToOne
@@ -23,8 +26,8 @@ public class Message {
     @Column(columnDefinition = "Text", nullable = false)
     private String body;
 
-    @Column(name = "is_internal")
-    private Boolean isInternal = false;
+    @Column(name = "is_internal", nullable = false)
+    private boolean internal;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();

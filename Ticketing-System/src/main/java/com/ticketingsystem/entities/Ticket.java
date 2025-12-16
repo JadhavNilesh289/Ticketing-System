@@ -1,15 +1,15 @@
 package com.ticketingsystem.entities;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import org.springframework.boot.autoconfigure.web.WebProperties;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
 @Table(name = "tickets")
-@Data
+@Getter @Setter
 public class Ticket {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -20,27 +20,31 @@ public class Ticket {
     private String description;
 
     @ManyToOne
-    @JoinColumn(name = "requester_id")
+    @JoinColumn(name = "requester_id", nullable = false)
     private User requester;
 
     @ManyToOne
     @JoinColumn(name = "assignee_id")
     private User assignee;
 
-    private String status = "NEW";
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TicketStatus status = TicketStatus.NEW;
 
-    @Transient
-    private String priority = "MEDIUM";
+    @Enumerated(EnumType.STRING)
+    @Column TicketPriority priority = TicketPriority.MEDIUM;
 
-    @Column(name = "created_at")
-    private LocalDateTime cratedAt = LocalDateTime.now();
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
 
-    @Column(name = "updated_at")
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt = LocalDateTime.now();
 
     @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Message> messages;
 
     @PreUpdate
-    public void preUpdate() { this.updatedAt = LocalDateTime.now(); }
+    public void updateTimestamp() {
+        this.updatedAt = LocalDateTime.now();
+    }
 }

@@ -1,6 +1,6 @@
 package com.ticketingsystem.dto;
 
-public class TicketCreateDto {
+public class TicketCreateRequest {
     public String subject;
     public String description;
     public String requesterName;
