@@ -6,6 +6,8 @@ import com.ticketingsystem.dto.TicketCreateRequest;
 import com.ticketingsystem.entities.Message;
 import com.ticketingsystem.entities.Ticket;
 import com.ticketingsystem.entities.User;
+import com.ticketingsystem.enums.Role;
+import com.ticketingsystem.enums.TicketStatus;
 import com.ticketingsystem.repository.MessageRepository;
 import com.ticketingsystem.repository.TicketRepository;
 import com.ticketingsystem.repository.UserRepository;
@@ -20,20 +22,24 @@ import org.springframework.stereotype.Service;
 @Transactional
 public class TicketServiceImpl implements TicketService {
 
-    @Autowired private TicketRepository ticketRepo;
-    @Autowired private MessageRepository messageRepo;
-    @Autowired private UserRepository userRepo;
-    @Autowired private BCryptPasswordEncoder encoder;
+    @Autowired
+    private TicketRepository ticketRepo;
+    @Autowired
+    private MessageRepository messageRepo;
+    @Autowired
+    private UserRepository userRepo;
+    @Autowired
+    private BCryptPasswordEncoder encoder;
 
     @Override
-    public Ticket createTicket(TicketCreateRequest req){
+    public Ticket createTicket(TicketCreateRequest req) {
         User requester = userRepo.findByEmail(req.requesterEmail)
                 .orElseGet(() -> {
                     User u = new User();
                     u.setFirstName(req.requesterName);
                     u.setEmail(req.requesterEmail);
                     u.setPasswordHash(encoder.encode("temp123"));
-                    u.setRole("USER");
+                    u.setRole(Role.USER);
                     return userRepo.save(u);
                 });
         Ticket t = new Ticket();
@@ -78,5 +84,17 @@ public class TicketServiceImpl implements TicketService {
         m.setBody(dto.body);
         m.setInternal(dto.internal);
         return messageRepo.save(m);
+    }
+
+    public Ticket assignTicket(Long ticketId, Long agentId) {
+        Ticket ticket = findTicket(ticketId);
+        User agent = findUser(agentId);
+        if (ticket.getStatus() != TicketStatus.NEW) {
+            throw new IllegalStateException("Ticket already assigned");
+        }
+
+        ticket.setAssignee(agent);
+        ticket.setStatus(TicketStatus.Assign);
+        return ticketRepo.save(ticket);
     }
 }

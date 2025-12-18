@@ -1,4 +1,4 @@
-package com.ticketingsystem.entities;
+package com.ticketingsystem.enums;
 
 public enum TicketPriority {
     LOW,

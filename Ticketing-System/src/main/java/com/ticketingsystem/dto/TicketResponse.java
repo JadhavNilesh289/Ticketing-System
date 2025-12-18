@@ -8,6 +8,6 @@ public class TicketResponse {
     public String description;
     public String status;
     public String priority;
-    public String createAt;
+    public String createdAt;
     public List<MessageResponse> messages;
 }

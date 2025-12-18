@@ -1,8 +1,7 @@
-package com.ticketingsystem.entities;
+package com.ticketingsystem.enums;
 
 public enum TicketStatus {
     NEW,
-    OPEN,
     IN_PROGRESS,
     RESOLVED,
     CLOSED

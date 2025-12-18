@@ -19,7 +19,7 @@ public class TicketMapper {
         dto.description = ticket.getDescription();
         dto.status = ticket.getStatus().name();
         dto.priority = ticket.getPriority().name();
-        dto.createAt = ticket.getCreatedAt().toString();
+        dto.createdAt = ticket.getCreatedAt().toString();
 
         dto.messages = ticket.getMessages() == null
                 ? List.of()
@@ -30,7 +30,7 @@ public class TicketMapper {
 
         return dto;
     }
-    
+
     public static MessageResponse toMessageResponse(Message m) {
         MessageResponse mr = new MessageResponse();
         mr.id = m.getId();
