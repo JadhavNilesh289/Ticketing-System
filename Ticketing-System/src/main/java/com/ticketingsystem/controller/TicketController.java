@@ -1,12 +1,10 @@
 package com.ticketingsystem.controller;
 
 import com.ticketingsystem.dto.MessageCreateRequest;
-import com.ticketingsystem.dto.MessageResponse;
 import com.ticketingsystem.dto.TicketCreateRequest;
 import com.ticketingsystem.dto.TicketResponse;
-import com.ticketingsystem.mapper.TicketMapper;
 import com.ticketingsystem.service.TicketService;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -17,48 +15,42 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/tickets")
 public class TicketController {
 
-    @Autowired
-    private TicketService ticketService;
+    private final TicketService ticketService;
 
-    //Create Tickets
-    @PostMapping
-    public ResponseEntity<TicketResponse> create(
-            @RequestBody TicketCreateRequest dto) {
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(TicketMapper.toResponse(
-                        ticketService.createTicket(dto)));
+    public TicketController(TicketService ticketService) {
+        this.ticketService = ticketService;
     }
 
-    //List Tickets
+    @PostMapping
+    public ResponseEntity<TicketResponse> create(
+           @Valid @RequestBody TicketCreateRequest request
+    ) {
+        TicketResponse response = ticketService.createTicket(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
     @GetMapping
     public Page<TicketResponse> list(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-
-        return ticketService
-                .listTickets(PageRequest.of(page, size))
-                .map(TicketMapper::toResponse);
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ticketService.listTickets(PageRequest.of(page, size));
     }
 
-    //Get Single Ticket
     @GetMapping("/{id}")
-    public TicketResponse get(@PathVariable Long id) {
-
-        return TicketMapper.toResponse(
-                ticketService.getTicket(id));
+    public TicketResponse get(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "false") boolean includeInternal
+    ) {
+        return ticketService.getTicket(id, includeInternal);
     }
 
-    // Add Message to Ticket
     @PostMapping("/{id}/messages")
-    public ResponseEntity<MessageResponse> addMessage(
+    public ResponseEntity<Void> addMessage(
             @PathVariable Long id,
-            @RequestBody MessageCreateRequest dto) {
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(TicketMapper.toMessageResponse(
-                        ticketService.addMessage(id, dto)));
+            @Valid @RequestBody MessageCreateRequest request
+    ) {
+        ticketService.addMessage(id, request);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 }

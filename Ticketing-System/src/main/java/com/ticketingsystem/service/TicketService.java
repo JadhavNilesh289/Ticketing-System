@@ -2,14 +2,21 @@ package com.ticketingsystem.service;
 
 import com.ticketingsystem.dto.MessageCreateRequest;
 import com.ticketingsystem.dto.TicketCreateRequest;
-import com.ticketingsystem.entities.Message;
-import com.ticketingsystem.entities.Ticket;
+import com.ticketingsystem.dto.TicketResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 public interface TicketService {
-    Ticket createTicket(TicketCreateRequest dto);
-    Page<Ticket> listTickets(Pageable pageable);
-    Ticket getTicket(Long id);
-    Message addMessage(Long ticketId, MessageCreateRequest dto);
+
+    TicketResponse createTicket(TicketCreateRequest request);
+
+    Page<TicketResponse> listTickets(Pageable pageable);
+
+    TicketResponse getTicket(Long ticketId, boolean includeInternalMessages);
+
+    void addMessage(Long ticketId, MessageCreateRequest request);
+
+    void assignTicket(Long ticketId, Long agentId);
+
+    void changeStatus(Long ticketId, String nextStatus);
 }

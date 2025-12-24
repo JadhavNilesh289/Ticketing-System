@@ -1,18 +1,20 @@
 package com.ticketingsystem.service;
 
-
 import com.ticketingsystem.dto.MessageCreateRequest;
 import com.ticketingsystem.dto.TicketCreateRequest;
+import com.ticketingsystem.dto.TicketResponse;
 import com.ticketingsystem.entities.Message;
 import com.ticketingsystem.entities.Ticket;
 import com.ticketingsystem.entities.User;
 import com.ticketingsystem.enums.Role;
 import com.ticketingsystem.enums.TicketStatus;
+import com.ticketingsystem.mapper.TicketMapper;
 import com.ticketingsystem.repository.MessageRepository;
 import com.ticketingsystem.repository.TicketRepository;
 import com.ticketingsystem.repository.UserRepository;
+import com.ticketingsystem.validation.TicketAssignmentValidator;
+import com.ticketingsystem.validation.TicketStatusValidator;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -22,79 +24,159 @@ import org.springframework.stereotype.Service;
 @Transactional
 public class TicketServiceImpl implements TicketService {
 
-    @Autowired
-    private TicketRepository ticketRepo;
-    @Autowired
-    private MessageRepository messageRepo;
-    @Autowired
-    private UserRepository userRepo;
-    @Autowired
-    private BCryptPasswordEncoder encoder;
+    private final TicketRepository ticketRepo;
+    private final MessageRepository messageRepo;
+    private final UserRepository userRepo;
+    private final BCryptPasswordEncoder passwordEncoder;
+    private final AuthService authService;
+
+
+    public TicketServiceImpl(
+            TicketRepository ticketRepo,
+            MessageRepository messageRepo,
+            UserRepository userRepo,
+            BCryptPasswordEncoder passwordEncoder,
+            AuthService authService
+    ) {
+        this.ticketRepo = ticketRepo;
+        this.messageRepo = messageRepo;
+        this.userRepo = userRepo;
+        this.passwordEncoder = passwordEncoder;
+        this.authService = authService;
+    }
+
 
     @Override
-    public Ticket createTicket(TicketCreateRequest req) {
+    public TicketResponse createTicket(TicketCreateRequest req) {
+
         User requester = userRepo.findByEmail(req.requesterEmail)
-                .orElseGet(() -> {
-                    User u = new User();
-                    u.setFirstName(req.requesterName);
-                    u.setEmail(req.requesterEmail);
-                    u.setPasswordHash(encoder.encode("temp123"));
-                    u.setRole(Role.USER);
-                    return userRepo.save(u);
-                });
-        Ticket t = new Ticket();
-        t.setSubject(req.subject);
-        t.setDescription(req.description);
-        t.setRequester(requester);
+                .orElseGet(() -> createRequester(req));
 
-        t = ticketRepo.save(t);
+        Ticket ticket = new Ticket();
+        ticket.setSubject(req.subject);
+        ticket.setDescription(req.description);
+        ticket.setRequester(requester);
 
-        Message m = new Message();
-        m.setTicket(t);
-        m.setAuthor(requester);
-        m.setBody(req.description);
-        messageRepo.save(m);
+        ticketRepo.save(ticket);
 
-        return t;
+        Message firstMessage = new Message();
+        firstMessage.setTicket(ticket);
+        firstMessage.setAuthor(requester);
+        firstMessage.setBody(req.description);
+        firstMessage.setInternal(false);
+        messageRepo.save(firstMessage);
+
+        return buildTicketResponse(ticket, false);
+    }
+
+
+    @Override
+    public Page<TicketResponse> listTickets(Pageable pageable) {
+        return ticketRepo.findAll(pageable)
+                .map(ticket -> buildTicketResponse(ticket, false));
     }
 
     @Override
-    public Page<Ticket> listTickets(Pageable pageable) {
-        return ticketRepo.findAll(pageable);
+    public TicketResponse getTicket(Long ticketId, boolean includeInternal) {
+
+        Ticket ticket = findTicket(ticketId);
+        User viewer = authService.currentUser();
+
+        boolean staff =
+                viewer.getRole() == Role.ADMIN ||
+                        viewer.getRole() == Role.AGENT;
+
+        return buildTicketResponse(ticket, staff && includeInternal);
     }
 
-    @Override
-    public Ticket getTicket(Long id) {
-        Ticket t = ticketRepo.findById(id).orElseThrow(() -> new RuntimeException("Ticket not found"));
-        t.setMessages(messageRepo.findByTicketIdOrderByCreatedAtAsc(id));
-        return t;
-    }
 
     @Override
-    public Message addMessage(Long ticketId, MessageCreateRequest dto) {
-        Ticket t = ticketRepo.findById(ticketId).orElseThrow(() -> new RuntimeException("Ticket not found"));
-        User author = null;
-        if (dto.authorId != null) {
-            author = userRepo.findById(dto.authorId).orElse(null);
+    public void addMessage(Long ticketId, MessageCreateRequest req) {
+
+        Ticket ticket = findTicket(ticketId);
+
+        if (ticket.getStatus() == TicketStatus.CLOSED) {
+            throw new IllegalStateException("Cannot add message to CLOSED ticket");
         }
 
-        Message m = new Message();
-        m.setTicket(t);
-        m.setAuthor(author);
-        m.setBody(dto.body);
-        m.setInternal(dto.internal);
-        return messageRepo.save(m);
+        User author = authService.currentUser();
+
+        if (req.internal && author.getRole() == Role.USER) {
+            throw new IllegalStateException("USER cannot add internal messages");
+        }
+
+        Message message = new Message();
+        message.setTicket(ticket);
+        message.setAuthor(author);
+        message.setBody(req.body);
+        message.setInternal(req.internal);
+
+        messageRepo.save(message);
     }
 
-    public Ticket assignTicket(Long ticketId, Long agentId) {
+    @Override
+    public void assignTicket(Long ticketId, Long agentId) {
+
         Ticket ticket = findTicket(ticketId);
         User agent = findUser(agentId);
-        if (ticket.getStatus() != TicketStatus.NEW) {
-            throw new IllegalStateException("Ticket already assigned");
-        }
+
+        TicketAssignmentValidator.validateAssignment(ticket, agent);
 
         ticket.setAssignee(agent);
-        ticket.setStatus(TicketStatus.Assign);
-        return ticketRepo.save(ticket);
+        ticket.setStatus(TicketStatus.IN_PROGRESS);
+
+        ticketRepo.save(ticket);
+    }
+
+    @Override
+    public void changeStatus(Long ticketId, String nextStatus) {
+
+        Ticket ticket = findTicket(ticketId);
+        TicketStatus next;
+        try {
+            next = TicketStatus.valueOf(nextStatus);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("Invalid ticket status");
+        }
+
+        TicketStatusValidator.validateTransition(ticket.getStatus(), next);
+
+        ticket.setStatus(next);
+        ticketRepo.save(ticket);
+    }
+
+    // helpers
+
+    private User createRequester(TicketCreateRequest req) {
+        User u = new User();
+        u.setFirstName(req.requesterName);
+        u.setEmail(req.requesterEmail);
+        u.setPasswordHash(passwordEncoder.encode("TEMP-LOGIN-DISABLED"));
+        u.setRole(Role.USER);
+        return userRepo.save(u);
+    }
+
+    private Ticket findTicket(Long id) {
+        return ticketRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Ticket not found"));
+    }
+
+    private User findUser(Long id) {
+        return userRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    private TicketResponse buildTicketResponse(Ticket ticket, boolean includeInternal) {
+
+        var messages = messageRepo
+                .findByTicketIdOrderByCreatedAtAsc(ticket.getId());
+
+        if (!includeInternal) {
+            messages = messages.stream()
+                    .filter(m -> !m.isInternal())
+                    .toList();
+        }
+
+        return TicketMapper.toResponse(ticket, messages);
     }
 }

@@ -3,8 +3,7 @@ package com.ticketingsystem.entities;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.ticketingsystem.enums.Role;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -15,7 +14,8 @@ import java.time.LocalDateTime;
                 @Index(name = "idx_user_email", columnList = "email", unique = true)
         }
 )
-@Getter @Setter
+@Getter
+@Setter
 public class User {
 
     @Id
