@@ -46,7 +46,4 @@ public final class TicketStatusValidator {
         }
     }
 
-    public static void validate(TicketStatus status, TicketStatus next) {
-        
-    }
 }

@@ -11,6 +11,7 @@ public final class UserMapper {
         UserResponse dto = new UserResponse();
         dto.id = user.getId();
         dto.firstName = user.getFirstName();
+        dto.lastName = user.getLastName();
         dto.email = user.getEmail();
         dto.role = user.getRole().name();
         return dto;

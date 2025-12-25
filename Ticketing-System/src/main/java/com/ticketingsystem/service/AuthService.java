@@ -27,11 +27,19 @@ public class AuthService {
     // Login
     public String login(String email, String password) {
 
-        User user = userRepo.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        if (email == null || password == null) {
+            throw new IllegalArgumentException("Email and password required");
+        }
+
+        String normalizedEmail = email.trim().toLowerCase();
+
+        User user = userRepo.findByEmail(normalizedEmail)
+                .orElseThrow(() ->
+                        new SecurityException("Invalid credentials")
+                );
 
         if (!encoder.matches(password, user.getPasswordHash())) {
-            throw new RuntimeException("Invalid credentials");
+            throw new SecurityException("Invalid credentials");
         }
 
         return jwtUtil.generateToken(
@@ -43,12 +51,17 @@ public class AuthService {
     // Current auth user
     public User currentUser() {
 
-        String email = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
+        var authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new SecurityException("Unauthenticated request");
+        }
+
+        String email = authentication.getName();
 
         return userRepo.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Authenticated user not found"));
+                .orElseThrow(() ->
+                        new SecurityException("Authenticated user not found"));
     }
 }

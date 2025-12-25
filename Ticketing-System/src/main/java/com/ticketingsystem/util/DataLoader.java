@@ -9,7 +9,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 
 @Component
-//@Profile("local")
+@Profile("local")
 public class DataLoader implements CommandLineRunner {
 
     private final UserRepository userRepo;

@@ -15,7 +15,7 @@ public final class TicketAssignmentValidator {
             throw new IllegalArgumentException("Assignee user not found");
         }
 
-        if (agent.getRole() == Role.USER) {
+        if (agent.getRole() != Role.AGENT) {
             throw new IllegalStateException("USER cannot be assigned to a ticket");
         }
 

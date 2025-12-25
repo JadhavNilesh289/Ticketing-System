@@ -4,6 +4,7 @@ import com.ticketingsystem.dto.CreateUserRequest;
 import com.ticketingsystem.dto.UserResponse;
 import com.ticketingsystem.enums.Role;
 import com.ticketingsystem.service.AdminService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,7 +21,7 @@ public class AdminController {
 
     @PostMapping("/agents")
     public ResponseEntity<UserResponse> createAgent(
-            @RequestBody CreateUserRequest request
+           @Valid @RequestBody CreateUserRequest request
     ) {
         UserResponse user = adminService.createUser(
                         request.firstName,

@@ -9,6 +9,7 @@ import com.ticketingsystem.enums.TicketStatus;
 import com.ticketingsystem.mapper.UserMapper;
 import com.ticketingsystem.repository.TicketRepository;
 import com.ticketingsystem.repository.UserRepository;
+import com.ticketingsystem.validation.TicketAssignmentValidator;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -60,13 +61,7 @@ public class AdminService {
         User agent = userRepo.findById(agentId)
                 .orElseThrow(() -> new RuntimeException("Agent not found"));
 
-        if (agent.getRole() != Role.AGENT) {
-            throw new IllegalStateException("Only AGENT can be assigned tickets");
-        }
-
-        if (ticket.getStatus() != TicketStatus.NEW) {
-            throw new IllegalStateException("Only NEW tickets can be assigned");
-        }
+        TicketAssignmentValidator.validateAssignment(ticket, agent);
 
         ticket.setAssignee(agent);
         ticket.setStatus(TicketStatus.IN_PROGRESS);

@@ -20,6 +20,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
 
     public JwtAuthFilter(JwtUtil jwtUtil) {
+
         this.jwtUtil = jwtUtil;
     }
 
@@ -28,6 +29,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String path = request.getServletPath();
         return path.startsWith("/api/auth")
                 || path.startsWith("/swagger-ui")
+                || path.startsWith("/swagger-ui.html")
                 || path.startsWith("/v3/api-docs");
     }
 
@@ -48,24 +50,31 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
 
             String token = authHeader.substring(7);
+            try {
+                if (!jwtUtil.isTokenValid(token)) {
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid JWT token");
+                    return;
+                }
 
-            if (jwtUtil.isTokenValid(token)) {
+                    String email = jwtUtil.extractEmail(token);
+                    String role = jwtUtil.extractRole(token);
 
-                String email = jwtUtil.extractEmail(token);
-                String role = jwtUtil.extractRole(token);
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(
+                                    email,
+                                    null,
+                                    List.of(new SimpleGrantedAuthority("ROLE_" + role))
+                            );
 
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(
-                                email,
-                                null,
-                                List.of(new SimpleGrantedAuthority("ROLE_" + role))
-                        );
+                    authentication.setDetails(
+                            new WebAuthenticationDetailsSource().buildDetails(request)
+                    );
 
-                authentication.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
-
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
+             catch (Exception e) {
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "JWT authentication failed");
+                return;
             }
         }
 

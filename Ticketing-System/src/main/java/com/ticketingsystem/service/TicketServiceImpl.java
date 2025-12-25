@@ -12,7 +12,6 @@ import com.ticketingsystem.mapper.TicketMapper;
 import com.ticketingsystem.repository.MessageRepository;
 import com.ticketingsystem.repository.TicketRepository;
 import com.ticketingsystem.repository.UserRepository;
-import com.ticketingsystem.validation.TicketAssignmentValidator;
 import com.ticketingsystem.validation.TicketStatusValidator;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
@@ -72,8 +71,21 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     public Page<TicketResponse> listTickets(Pageable pageable) {
-        return ticketRepo.findAll(pageable)
-                .map(ticket -> buildTicketResponse(ticket, false));
+        User viewer = authService.currentUser();
+
+        // Determine if the user has elevated permissions
+        boolean isAdminOrAgent = viewer.getRole() == Role.ADMIN || viewer.getRole() == Role.AGENT;
+
+        Page<Ticket> ticketPage;
+
+        if (isAdminOrAgent) {
+            ticketPage = ticketRepo.findAll(pageable);
+        } else {
+            ticketPage = ticketRepo.findByRequester(viewer, pageable);
+        }
+
+        // Map the entities to DTOs and return
+        return ticketPage.map(ticket -> buildTicketResponse(ticket, false));
     }
 
     @Override
@@ -114,22 +126,15 @@ public class TicketServiceImpl implements TicketService {
         messageRepo.save(message);
     }
 
-    @Override
-    public void assignTicket(Long ticketId, Long agentId) {
-
-        Ticket ticket = findTicket(ticketId);
-        User agent = findUser(agentId);
-
-        TicketAssignmentValidator.validateAssignment(ticket, agent);
-
-        ticket.setAssignee(agent);
-        ticket.setStatus(TicketStatus.IN_PROGRESS);
-
-        ticketRepo.save(ticket);
-    }
 
     @Override
     public void changeStatus(Long ticketId, String nextStatus) {
+
+        User actor = authService.currentUser();
+
+        if (actor.getRole() == Role.USER) {
+            throw new IllegalStateException("USER cannot change ticket status");
+        }
 
         Ticket ticket = findTicket(ticketId);
         TicketStatus next;
@@ -151,7 +156,8 @@ public class TicketServiceImpl implements TicketService {
         User u = new User();
         u.setFirstName(req.requesterName);
         u.setEmail(req.requesterEmail);
-        u.setPasswordHash(passwordEncoder.encode("TEMP-LOGIN-DISABLED"));
+//        u.setPasswordHash(passwordEncoder.encode("TEMP-LOGIN-DISABLED"));
+        u.setPasswordHash("{noop}DISABLED");
         u.setRole(Role.USER);
         return userRepo.save(u);
     }

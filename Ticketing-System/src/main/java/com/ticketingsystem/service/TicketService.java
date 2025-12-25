@@ -16,7 +16,5 @@ public interface TicketService {
 
     void addMessage(Long ticketId, MessageCreateRequest request);
 
-    void assignTicket(Long ticketId, Long agentId);
-
     void changeStatus(Long ticketId, String nextStatus);
 }
